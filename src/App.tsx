@@ -1,36 +1,41 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import './App.scss';
 import { peopleFromServer } from './data/people';
 import { DropdownMenu } from './components/DropdownMenu';
 import { Person } from './types/Person';
+import debounce from 'lodash.debounce';
 
 export const App: React.FC = () => {
   const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
   const [title, setTitle] = useState(selectedPerson?.name || '');
+  const [appliedTitle, setAppliedTitle] = useState('');
 
-  console.log(selectedPerson)
+  const applyTitle = useCallback(debounce(setAppliedTitle, 300), []);
 
   useEffect(() => {
     setTitle(selectedPerson?.name || '');
   }, [selectedPerson]);
 
   const filteredUsers = useMemo(() => {
-    return [...peopleFromServer].filter(person => person.name.includes(title));
-  }, [title]);
+    return [...peopleFromServer].filter(person =>
+      person.name.includes(appliedTitle),
+    );
+  }, [appliedTitle]);
 
   const [inputFieldFocus, setInputFieldFocus] = useState(false);
 
   function handleTitle(event: React.ChangeEvent<HTMLInputElement>) {
     setTitle(event.target.value);
+    applyTitle(event.target.value);
   }
 
   function handleInputFieldFocus() {
     setInputFieldFocus(true);
   }
 
-  function handleInputFieldBlur() {
+  function handleSelectPerson(person: Person) {
+    setSelectedPerson(person);
     setInputFieldFocus(false);
-    setTitle('');
   }
 
   return (
@@ -57,7 +62,7 @@ export const App: React.FC = () => {
           {inputFieldFocus && (
             <DropdownMenu
               peopleFromServer={filteredUsers}
-              onSelect={setSelectedPerson}
+              onSelect={handleSelectPerson}
             />
           )}
         </div>
