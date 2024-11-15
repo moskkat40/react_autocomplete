@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import './App.scss';
 import { peopleFromServer } from './data/people';
 import { DropdownMenu } from './components/DropdownMenu';
@@ -7,22 +13,20 @@ import debounce from 'lodash.debounce';
 
 export const App: React.FC = () => {
   const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
-  const [title, setTitle] = useState(selectedPerson?.name || '');
+  const [title, setTitle] = useState('');
   const [appliedTitle, setAppliedTitle] = useState('');
+  const [inputFieldFocus, setInputFieldFocus] = useState(false);
+
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
 
   const applyTitle = useCallback(debounce(setAppliedTitle, 300), []);
 
-  useEffect(() => {
-    setTitle(selectedPerson?.name || '');
-  }, [selectedPerson]);
-
   const filteredUsers = useMemo(() => {
     return [...peopleFromServer].filter(person =>
-      person.name.includes(appliedTitle),
+      person.name.toLowerCase().includes(appliedTitle.toLowerCase()),
     );
   }, [appliedTitle]);
-
-  const [inputFieldFocus, setInputFieldFocus] = useState(false);
 
   function handleTitle(event: React.ChangeEvent<HTMLInputElement>) {
     setTitle(event.target.value);
@@ -36,7 +40,25 @@ export const App: React.FC = () => {
   function handleSelectPerson(person: Person) {
     setSelectedPerson(person);
     setInputFieldFocus(false);
+    setTitle(person?.name || '');
   }
+
+  function handleClickOutside(event: MouseEvent) {
+    if (
+      inputRef.current !== event.target &&
+      dropdownRef.current !== event.target
+    ) {
+      setInputFieldFocus(false);
+    }
+  }
+
+  useEffect(() => {
+    document.addEventListener('click', handleClickOutside);
+
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, []);
 
   return (
     <div className="container">
@@ -55,15 +77,18 @@ export const App: React.FC = () => {
               placeholder="Enter a part of the name"
               className="input"
               data-cy="search-input"
+              ref={inputRef}
               onChange={handleTitle}
-              onClick={handleInputFieldFocus}
+              onFocus={handleInputFieldFocus}
             />
           </div>
           {inputFieldFocus && (
-            <DropdownMenu
-              peopleFromServer={filteredUsers}
-              onSelect={handleSelectPerson}
-            />
+            <div ref={dropdownRef}>
+              <DropdownMenu
+                peopleFromServer={filteredUsers}
+                onSelect={handleSelectPerson}
+              />
+            </div>
           )}
         </div>
       </main>
